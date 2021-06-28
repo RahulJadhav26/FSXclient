@@ -17,7 +17,7 @@
     flat>
         <v-spacer></v-spacer>
         <v-btn :disabled='checkDel' class="mr-5" @click="Delete(selected[0].FileSystemId)">Delete</v-btn>
-        <v-btn>Create</v-btn>
+       <router-link tag='v-btn' to='/create'> <v-btn>Create</v-btn></router-link>
       </v-toolbar>
     <v-data-table
       v-model="selected"
