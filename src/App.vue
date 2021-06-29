@@ -6,7 +6,7 @@
       dark
     >
       <div class="d-flex align-center">
-         <v-toolbar-title>FSX</v-toolbar-title>
+         <v-toolbar-title>LFM</v-toolbar-title>
       </div>
 
       <v-spacer></v-spacer>

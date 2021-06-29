@@ -119,9 +119,8 @@ export default {
       PerUnitStorageThroughput: 0,
       rules: {
         required: value => !!value || 'Required',
-        storageCheck: [value => Number(value) <= 2.4 || 'Supported range is between 1.2 and 2.4',
+        storageCheck:
           value => Number(value) >= 1.2 || 'Minimum should be 1.2'
-        ]
       },
       test: ''
     }
