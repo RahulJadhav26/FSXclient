@@ -1,6 +1,6 @@
 <template>
   <v-app>
-          <!-- {{test}} -->
+          {{test}}
       <v-container style="width:70%">
       <v-form>
            <strong> File System Name</strong>
@@ -66,6 +66,22 @@
           v-model="subnetId[0]"
           :items="subnetIds"
         ></v-select>
+         <strong>Import data from and export data to S3 <span class="font-italic">(Optional)</span></strong>
+        <h5>Import Bucket</h5>
+        <v-select
+          v-model="importBucketPath"
+          :items="buckets"
+          label="Select your Bucket"
+          placeholder="s3://my-bucket"
+        ></v-select>
+        <h5>Import prefix - optional</h5>
+        <v-text-field
+            outlined
+            placeholder="s3-import-prefix/"
+            hint="Start typing the path with slash for ex. /folder/file1/"
+            clearable
+            v-model="importPrefix"
+        ></v-text-field>
          <strong>Tags</strong>
          <!-- <v-btn class="float-right" @click="count+=count"> <v-icon>mdi-plus</v-icon></v-btn> -->
          <v-row class="mt-5" v-for="i in count" :key="i">
@@ -98,7 +114,6 @@
         <v-alert v-if="fsxError"
           type="error"
         >{{errorMessage}}</v-alert>
-        {{StorageCapacity}}
         <v-btn color="primary" @click="createFileSystem()">Create File System</v-btn>
       </v-form>
     </v-container>
@@ -110,6 +125,8 @@ import routes from '../../service/routes'
 export default {
   data () {
     return {
+      importBucketPath: '',
+      importPrefix: '',
       FileSystemName: '',
       fsxCreated: false,
       fsxError: false,
@@ -127,6 +144,7 @@ export default {
       subnetId: ['subnet-8a82bfc1'],
       // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
       subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
+      buckets: [],
       count: 1,
       PerUnitStorageThroughput: 0,
       test: ''
@@ -136,6 +154,12 @@ export default {
     this.fsxCreated = false
     this.fsxError = false
     this.storageCheck = false
+    routes.listBuckets().then(data => {
+      var Buckets = data.data
+      for (var i in Buckets) {
+        this.buckets.push(Buckets[i].Name)
+      }
+    })
   },
   methods: {
     CheckClear () {
@@ -154,7 +178,7 @@ export default {
       this.storageCheck = false
       console.log(Number(this.StorageCapacity))
       console.log((Number(this.StorageCapacity) * 1000) % 24)
-      if (Number(this.StorageCapacity) > 1.2 && Number(this.StorageCapacity) * 1000 % 24 === 0) {
+      if (Number(this.StorageCapacity) > 1.1 && Number(this.StorageCapacity) * 1000 % 24 === 0) {
         console.log(Number(this.StorageCapacity) % 2.4 === 0)
         console.log(this.Deployment)
         var arrTags = [{ Key: 'name', Value: this.FileSystemName }]
@@ -171,13 +195,22 @@ export default {
             LustreConfiguration: {
               DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType,
               PerUnitStorageThroughput: this.PerUnitStorageThroughput
+              // ExportPath: 's3://' + this.importBucketPath + this.importPrefix,
+              // ImportPath: 's3://' + this.importBucketPath + this.importPrefix
             }
           }
+          if (this.importBucketPath) {
+            obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
+            obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
+          }
           this.test = obj
-          routes.createFileSystem(obj).then(data => {
+          routes.createFileSystem(obj).then((data, err) => {
             if (data) {
               this.fsxCreated = true
               this.successMessage = 'File System with FileSytemId ' + data.data.FileSystem.FileSystemId + ' is Created'
+            } else if (err) {
+              this.fsxError = true
+              this.errorMessage = err.message
             }
           })
         } else {
@@ -189,13 +222,22 @@ export default {
             Tags: arrTags,
             LustreConfiguration: {
               DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
+              // ExportPath: 's3://' + this.importBucketPath + this.importPrefix,
+              // ImportPath: 's3://' + this.importBucketPath + this.importPrefix
             }
           }
+          if (this.importBucketPath) {
+            obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
+            obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
+          }
           this.test = obj1
-          routes.createFileSystem(obj1).then(data => {
+          routes.createFileSystem(obj1).then((data, err) => {
             if (data) {
               this.fsxCreated = true
               this.successMessage = 'File System ' + data.data.FileSystem.FileSystemId + 'Created'
+            } else if (err) {
+              this.fsxError = true
+              this.errorMessage = err.message
             }
           })
         }

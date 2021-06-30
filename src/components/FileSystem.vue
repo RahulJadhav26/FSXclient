@@ -101,7 +101,6 @@ export default {
         this.loading = false
       } else {
         for (var i in this.FileSystem) {
-          console.log(this.FileSystem[i])
           if (this.FileSystem[i].Tags.length === 0) {
             console.log('No Tags')
             this.loading = false

@@ -9,5 +9,8 @@ export default {
   },
   createFileSystem (params) {
     return Api().post('/fsx/create', params)
+  },
+  listBuckets () {
+    return Api().get('/s3/list')
   }
 }
