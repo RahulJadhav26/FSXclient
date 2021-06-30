@@ -3,7 +3,7 @@
     <!-- {{FileSystem}} -->
     <!-- {{selected[0].FileSystemId}} -->
     <v-card>
-      <h1 class="text-center">FSX File System</h1>
+      <h2 class="text-center">Lustre File System List</h2>
     <v-card-title>
       <v-text-field
         v-model="search"
@@ -61,7 +61,7 @@ export default {
       loading: false,
       headers: [
         {
-          text: 'File System name',
+          text: 'Lustre File System name',
           align: 'start',
           value: 'FileSystemName'
         },
@@ -75,7 +75,7 @@ export default {
           align: 'start',
           value: 'FileSystemId'
         },
-        { text: 'File System Type', value: 'FileSystemType' },
+        { text: 'Lustre File System Type', value: 'FileSystemType' },
         { text: 'Lifecycle', value: 'Lifecycle' },
         { text: 'Storage Capacity', value: 'StorageCapacity' },
         { text: 'Storage Type', value: 'StorageType' },

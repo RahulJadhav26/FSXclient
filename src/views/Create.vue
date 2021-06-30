@@ -1,6 +1,6 @@
 <template>
   <div class="about">
-    <h1 class="text-center mt-5">Create File System</h1>
+    <h1 class="text-center mt-5">Create Lustre File System</h1>
     <Form/>
   </div>
 </template>

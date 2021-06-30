@@ -1,9 +1,9 @@
 <template>
   <v-app>
-          {{test}}
+          <!-- {{test}} -->
       <v-container style="width:70%">
       <v-form>
-           <strong> File System Name</strong>
+           <strong> Lustre File System Name</strong>
           <v-text-field
             outlined
             clearable
@@ -141,10 +141,12 @@ export default {
       ],
       StorageCapacity: 0,
       Tag: { Key: '', Value: '' },
-      subnetId: ['subnet-8a82bfc1'],
-      // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
-      subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
-      buckets: [],
+      subnetId: ['subnet-c04a349f'],
+      // Rahul
+      subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
+      // Sid
+      // subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
+      buckets: [''],
       count: 1,
       PerUnitStorageThroughput: 0,
       test: ''
@@ -195,22 +197,21 @@ export default {
             LustreConfiguration: {
               DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType,
               PerUnitStorageThroughput: this.PerUnitStorageThroughput
-              // ExportPath: 's3://' + this.importBucketPath + this.importPrefix,
-              // ImportPath: 's3://' + this.importBucketPath + this.importPrefix
             }
           }
           if (this.importBucketPath) {
             obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
             obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
           }
-          this.test = obj
-          routes.createFileSystem(obj).then((data, err) => {
-            if (data) {
+          // this.test = obj
+          routes.createFileSystem(obj).then(data => {
+            console.log()
+            if (Object.keys(data.data).includes('Filesystem')) {
               this.fsxCreated = true
               this.successMessage = 'File System with FileSytemId ' + data.data.FileSystem.FileSystemId + ' is Created'
-            } else if (err) {
+            } else {
               this.fsxError = true
-              this.errorMessage = err.message
+              this.errorMessage = data.data.message
             }
           })
         } else {
@@ -222,22 +223,20 @@ export default {
             Tags: arrTags,
             LustreConfiguration: {
               DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
-              // ExportPath: 's3://' + this.importBucketPath + this.importPrefix,
-              // ImportPath: 's3://' + this.importBucketPath + this.importPrefix
             }
           }
           if (this.importBucketPath) {
             obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
             obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
           }
-          this.test = obj1
-          routes.createFileSystem(obj1).then((data, err) => {
-            if (data) {
+          // this.test = obj1
+          routes.createFileSystem(obj1).then(data => {
+            if (Object.keys(data.data).includes('Filesystem')) {
               this.fsxCreated = true
-              this.successMessage = 'File System ' + data.data.FileSystem.FileSystemId + 'Created'
-            } else if (err) {
+              this.successMessage = 'File System with FileSytemId ' + data.data.FileSystem.FileSystemId + ' is Created'
+            } else {
               this.fsxError = true
-              this.errorMessage = err.message
+              this.errorMessage = data.data.message
             }
           })
         }
