@@ -114,7 +114,7 @@
         <v-alert v-if="fsxError"
           type="error"
         >{{errorMessage}}</v-alert>
-        <v-btn color="primary" @click="createFileSystem()">Create File System</v-btn>
+        <v-btn class="mb-5" color="primary" @click="createFileSystem()">Create File System</v-btn>
       </v-form>
     </v-container>
   </v-app>

@@ -2,8 +2,8 @@
   <v-container>
     <!-- {{FileSystem}} -->
     <!-- {{selected[0].FileSystemId}} -->
-    <v-card>
-      <h2 class="text-center">Lustre File System List</h2>
+    <v-card style="border-radius:1.7rem; border:2px solid grey" class="shadow-lg">
+      <h4 class="text-center pt-5 mt-5">Lustre File System List</h4>
     <v-card-title>
       <v-text-field
         v-model="search"
