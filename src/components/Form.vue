@@ -1,6 +1,6 @@
-,<template>
+<template>
   <v-app>
-      {{test}}
+          <!-- {{test}} -->
       <v-container style="width:70%">
       <v-form>
            <strong> File System Name</strong>
@@ -58,14 +58,13 @@
             hint="Supported sizes: 1.2 TiB or increments of 2.4 TiB"
             outlined
             clearable
-            :rules="rules.storageCheck"
             v-model="StorageCapacity"
         ></v-text-field>
+        <p v-if="storageCheck" class="font-italic subtitle-2" style="color:red;">*Input the Correct Storage Capacity(Refer Hint)</p>
         <strong>Subnet ID</strong>
         <v-select
           v-model="subnetId[0]"
           :items="subnetIds"
-          v-bind="subnetIds[0]"
         ></v-select>
          <strong>Tags</strong>
          <!-- <v-btn class="float-right" @click="count+=count"> <v-icon>mdi-plus</v-icon></v-btn> -->
@@ -93,6 +92,13 @@
              </v-col>
              <v-btn icon v-if="CheckClear()" @click="remove()" class="float-right mt-5"> <v-icon>mdi-close-thick</v-icon></v-btn>
           </v-row>
+          <v-alert v-if="fsxCreated"
+          type="success"
+        >{{successMessage}}</v-alert>
+        <v-alert v-if="fsxError"
+          type="error"
+        >{{errorMessage}}</v-alert>
+        {{StorageCapacity}}
         <v-btn color="primary" @click="createFileSystem()">Create File System</v-btn>
       </v-form>
     </v-container>
@@ -105,6 +111,11 @@ export default {
   data () {
     return {
       FileSystemName: '',
+      fsxCreated: false,
+      fsxError: false,
+      storageCheck: false,
+      successMessage: '',
+      errorMessage: '',
       DeploymentCheck: false,
       DeploymentVal: 0,
       Deployment: [
@@ -113,17 +124,18 @@ export default {
       ],
       StorageCapacity: 0,
       Tag: { Key: '', Value: '' },
-      subnetId: ['subnet-c04a349f'],
-      subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
+      subnetId: ['subnet-8a82bfc1'],
+      // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
+      subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
       count: 1,
       PerUnitStorageThroughput: 0,
-      rules: {
-        required: value => !!value || 'Required',
-        storageCheck:
-          value => Number(value) >= 1.2 || 'Minimum should be 1.2'
-      },
       test: ''
     }
+  },
+  created () {
+    this.fsxCreated = false
+    this.fsxError = false
+    this.storageCheck = false
   },
   methods: {
     CheckClear () {
@@ -137,44 +149,60 @@ export default {
       this.count = this.count - 1
     },
     createFileSystem () {
-      console.log(this.Deployment)
-      var arrTags = [{ Key: 'name', Value: this.FileSystemName }]
-      if (this.Tag.key) {
-        arrTags.push(this.Tag)
-      }
-      if (this.Deployment[this.DeploymentVal].DeploymentType === 'PERSISTENT_1') {
-        var obj = {
-          FileSystemType: 'LUSTRE',
-          StorageCapacity: Number(this.StorageCapacity) * 1000,
-          StorageType: this.Deployment[this.DeploymentVal].StorageType,
-          SubnetIds: this.subnetId,
-          Tags: arrTags,
-          LustreConfiguration: {
-            DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType,
-            PerUnitStorageThroughput: this.PerUnitStorageThroughput
-          }
+      this.fsxError = false
+      this.fsxSuccess = false
+      this.storageCheck = false
+      console.log(Number(this.StorageCapacity))
+      console.log((Number(this.StorageCapacity) * 1000) % 24)
+      if (Number(this.StorageCapacity) > 1.2 && Number(this.StorageCapacity) * 1000 % 24 === 0) {
+        console.log(Number(this.StorageCapacity) % 2.4 === 0)
+        console.log(this.Deployment)
+        var arrTags = [{ Key: 'name', Value: this.FileSystemName }]
+        if (this.Tag.key) {
+          arrTags.push(this.Tag)
         }
-        this.test = obj
-        routes.createFileSystem(obj).then(data => {
-          console.log(data)
-          alert('Created')
-        })
+        if (this.Deployment[this.DeploymentVal].DeploymentType === 'PERSISTENT_1') {
+          var obj = {
+            FileSystemType: 'LUSTRE',
+            StorageCapacity: Number(this.StorageCapacity) * 1000,
+            StorageType: this.Deployment[this.DeploymentVal].StorageType,
+            SubnetIds: this.subnetId,
+            Tags: arrTags,
+            LustreConfiguration: {
+              DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType,
+              PerUnitStorageThroughput: this.PerUnitStorageThroughput
+            }
+          }
+          this.test = obj
+          routes.createFileSystem(obj).then(data => {
+            if (data) {
+              this.fsxCreated = true
+              this.successMessage = 'File System with FileSytemId ' + data.data.FileSystem.FileSystemId + ' is Created'
+            }
+          })
+        } else {
+          var obj1 = {
+            FileSystemType: 'LUSTRE',
+            StorageCapacity: this.StorageCapacity,
+            StorageType: this.Deployment[this.DeploymentVal].StorageType,
+            SubnetIds: this.subnetId,
+            Tags: arrTags,
+            LustreConfiguration: {
+              DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
+            }
+          }
+          this.test = obj1
+          routes.createFileSystem(obj1).then(data => {
+            if (data) {
+              this.fsxCreated = true
+              this.successMessage = 'File System ' + data.data.FileSystem.FileSystemId + 'Created'
+            }
+          })
+        }
       } else {
-        var obj1 = {
-          FileSystemType: 'LUSTRE',
-          StorageCapacity: this.StorageCapacity,
-          StorageType: this.Deployment[this.DeploymentVal].StorageType,
-          SubnetIds: this.subnetId,
-          Tags: arrTags,
-          LustreConfiguration: {
-            DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
-          }
-        }
-        this.test = obj1
-        routes.createFileSystem(obj1).then(data => {
-          console.log(data)
-          alert('Created')
-        })
+        this.storageCheck = true
+        this.fsxError = true
+        this.errorMessage = 'File System Not Created'
       }
     }
   }
