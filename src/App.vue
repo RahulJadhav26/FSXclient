@@ -5,8 +5,9 @@
       color="primary"
       dark
     >
-          <h1 style="margin-left:37%"> Lustre File System Manager</h1>
-      <v-spacer></v-spacer>
+        <div class="d-flex">
+          <v-toolbar-title> Lustre File System Manager</v-toolbar-title>
+        </div>
       <router-link to="/"><v-btn text>
         <span>All File System</span>
       </v-btn></router-link>

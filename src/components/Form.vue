@@ -141,11 +141,11 @@ export default {
       ],
       StorageCapacity: 0,
       Tag: { Key: '', Value: '' },
-      subnetId: ['subnet-c04a349f'],
+      subnetId: ['subnet-8a82bfc1'],
       // Rahul
-      subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
+      // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
       // Sid
-      // subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
+      subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
       buckets: [''],
       count: 1,
       PerUnitStorageThroughput: 0,
