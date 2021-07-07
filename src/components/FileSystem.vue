@@ -50,9 +50,7 @@
         </tr>
     </template>
     <template v-slot:item.Tags ="{ item }">
-      <ul v-for="i in item.Tags" :key="i.Key" >
-        <li>{{i.Key}} : {{i.Value}}</li>
-      </ul>
+      {{item.Tags[0].Value}}
     </template>
     </v-data-table>
   </v-card>
@@ -90,7 +88,7 @@ export default {
         { text: 'Lifecycle', value: 'Lifecycle' },
         { text: 'Storage Capacity', value: 'StorageCapacity' },
         { text: 'Storage Type', value: 'StorageType' },
-        { text: 'Tags', value: 'Tags' },
+        { text: 'Key', value: 'Tags' },
         { text: 'Creation Time', value: 'CreationTime' }
       ]
     }
