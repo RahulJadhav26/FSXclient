@@ -1,6 +1,5 @@
 <template>
   <v-app>
-          <!-- {{test}} -->
       <v-container style="width:70%">
       <v-form>
            <strong> Lustre File System Name</strong>
@@ -84,16 +83,15 @@
         ></v-text-field>
          <strong>Tags</strong>
          <!-- <v-btn class="float-right" @click="count+=count"> <v-icon>mdi-plus</v-icon></v-btn> -->
-         <v-row class="mt-5" v-for="i in count" :key="i">
+         <v-row class="mt-5" v-for="i in Tags" :key="i.Key">
              <v-col
                 cols="12"
                 sm="6"
                 md="6">
                  <v-text-field
-                    outlined
                     placeholder="Key"
-                    clearable
-                    v-model="Tag.Key"
+                    disabled
+                    v-model="i.Key"
                 ></v-text-field>
              </v-col>
              <v-col
@@ -103,7 +101,7 @@
                  <v-text-field
                     outlined
                     placeholder="Value"
-                    v-model="Tag.Value"
+                    v-model="i.Value"
                 ></v-text-field>
              </v-col>
              <v-btn icon v-if="CheckClear()" @click="remove()" class="float-right mt-5"> <v-icon>mdi-close-thick</v-icon></v-btn>
@@ -114,7 +112,7 @@
         <v-alert v-if="fsxError"
           type="error"
         >{{errorMessage}}</v-alert>
-        <v-btn class="mb-5" color="primary" @click="createFileSystem()">Create File System</v-btn>
+        <v-btn class="mb-5" :disabled='creating' color="primary" @click="createFileSystem()">{{createButtonText}}</v-btn>
       </v-form>
     </v-container>
   </v-app>
@@ -134,18 +132,25 @@ export default {
       successMessage: '',
       errorMessage: '',
       DeploymentCheck: false,
+      creating: false,
+      createButtonText: 'Create File System',
       DeploymentVal: 0,
       Deployment: [
         { DeploymentType: 'PERSISTENT_1', StorageType: 'SSD' },
-        { DeploymentType: 'PERSISTENT_1', StorageType: 'SSD' }
+        { DeploymentType: 'SCRATCH_2', StorageType: 'SSD' }
       ],
       StorageCapacity: 0,
-      Tag: { Key: '', Value: '' },
-      subnetId: ['subnet-c04a349f'],
+      Tags: [
+        { Key: 'Key1', Value: 'Department1' },
+        { Key: 'Key2', Value: 'Department2' },
+        { Key: 'Key3', Value: 'Department3' },
+        { Key: 'Key4', Value: 'Department4' }
+      ],
+      subnetId: ['subnet-8a82bfc1'],
       // Rahul
-      subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
+      // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
       // Sid
-      // subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
+      subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
       buckets: [''],
       count: 1,
       PerUnitStorageThroughput: 0,
@@ -175,74 +180,58 @@ export default {
       this.count = this.count - 1
     },
     createFileSystem () {
+      this.fsxCreated = false
       this.fsxError = false
-      this.fsxSuccess = false
       this.storageCheck = false
+      this.creating = true
+      this.createButtonText = 'Creating File System....'
       console.log(Number(this.StorageCapacity))
       console.log((Number(this.StorageCapacity) * 1000) % 24)
       if (Number(this.StorageCapacity) > 1.1 && Number(this.StorageCapacity) * 1000 % 24 === 0) {
         console.log(Number(this.StorageCapacity) % 2.4 === 0)
         console.log(this.Deployment)
-        var arrTags = [{ Key: 'name', Value: this.FileSystemName }]
-        if (this.Tag.key) {
-          arrTags.push(this.Tag)
+        var arrTags = [{ Key: 'Name', Value: this.FileSystemName }]
+        console.log(this.Tags)
+        Array.prototype.push.apply(arrTags, this.Tags)
+        console.log(arrTags)
+        console.log(this.Tags)
+        var obj = {
+          FileSystemType: 'LUSTRE',
+          StorageCapacity: Number(this.StorageCapacity) * 1000,
+          StorageType: this.Deployment[this.DeploymentVal].StorageType,
+          SubnetIds: this.subnetId,
+          Tags: arrTags,
+          LustreConfiguration: {
+            DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
+          }
         }
+        console.log(obj)
         if (this.Deployment[this.DeploymentVal].DeploymentType === 'PERSISTENT_1') {
-          var obj = {
-            FileSystemType: 'LUSTRE',
-            StorageCapacity: Number(this.StorageCapacity) * 1000,
-            StorageType: this.Deployment[this.DeploymentVal].StorageType,
-            SubnetIds: this.subnetId,
-            Tags: arrTags,
-            LustreConfiguration: {
-              DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType,
-              PerUnitStorageThroughput: this.PerUnitStorageThroughput
-            }
-          }
-          if (this.importBucketPath) {
-            obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
-            obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
-          }
-          // this.test = obj
-          routes.createFileSystem(obj).then(data => {
-            if (Object.keys(data.data).includes('FileSystem')) {
-              this.fsxCreated = true
-              this.successMessage = 'File System with FileSystemId ' + data.data.FileSystem.FileSystemId + ' is Created'
-            } else {
-              this.fsxError = true
-              this.errorMessage = data.data.message
-            }
-          })
-        } else {
-          var obj1 = {
-            FileSystemType: 'LUSTRE',
-            StorageCapacity: this.StorageCapacity,
-            StorageType: this.Deployment[this.DeploymentVal].StorageType,
-            SubnetIds: this.subnetId,
-            Tags: arrTags,
-            LustreConfiguration: {
-              DeploymentType: this.Deployment[this.DeploymentVal].DeploymentType
-            }
-          }
-          if (this.importBucketPath) {
-            obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
-            obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
-          }
-          // this.test = obj1
-          routes.createFileSystem(obj1).then(data => {
-            if (Object.keys(data.data).includes('FileSystem')) {
-              this.fsxCreated = true
-              this.successMessage = 'File System with FileSystemId ' + data.data.FileSystem.FileSystemId + ' is Created'
-            } else {
-              this.fsxError = true
-              this.errorMessage = data.data.message
-            }
-          })
+          obj.LustreConfiguration.PerUnitStorageThroughput = this.PerUnitStorageThroughput
         }
+        if (this.importBucketPath) {
+          obj.LustreConfiguration.ExportPath = 's3://' + this.importBucketPath + this.importPrefix
+          obj.LustreConfiguration.ImportPath = 's3://' + this.importBucketPath + this.importPrefix
+        }
+        routes.createFileSystem(obj).then(data => {
+          if (Object.keys(data.data).includes('FileSystem')) {
+            this.fsxCreated = true
+            this.successMessage = 'File System with FileSystemId ' + data.data.FileSystem.FileSystemId + ' is Created'
+            this.creating = false
+            this.createButtonText = 'Create File System'
+          } else {
+            this.fsxError = true
+            this.errorMessage = data.data.message
+            this.creating = false
+            this.createButtonText = 'Create File System'
+          }
+        })
       } else {
         this.storageCheck = true
         this.fsxError = true
         this.errorMessage = 'File System Not Created'
+        this.creating = false
+        this.createButtonText = 'Create File System'
       }
     }
   }
