@@ -12,5 +12,15 @@ export default {
   },
   listBuckets () {
     return Api().get('/s3/list')
+  },
+  listec2 () {
+    return Api().get('/ec2/list')
+  },
+  mountFileSystem (params) {
+    console.log('send command Requested')
+    return Api().post('/ssm/sendCommand', params)
+  },
+  listFileSystemById (params) {
+    return Api().post('/fsx/list', params)
   }
 }

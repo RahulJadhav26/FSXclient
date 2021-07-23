@@ -1,6 +1,7 @@
 <template>
   <v-container>
     <!-- {{FileSystem}} -->
+    <!-- {{ec2servers}} -->
     <!-- {{selected[0].FileSystemId}} -->
     <v-card style="border-radius:1.7rem; border:2px solid grey" class="shadow-lg">
       <h4 class="text-center pt-5 mt-5">Lustre File System List</h4>
@@ -16,6 +17,60 @@
     <v-toolbar
     flat>
         <v-spacer></v-spacer>
+         <v-dialog
+      v-model="dialog"
+      scrollable
+      max-width="1000px"
+    >
+      <template v-slot:activator="{ on, attrs }">
+        <v-btn
+          v-bind="attrs"
+          v-on="on"
+          class="mr-5"
+          :disabled='checkDel'
+        >
+          Mount
+        </v-btn>
+      </template>
+      <v-card style="height:500px;">
+        <v-card-title>Select EC2 Server</v-card-title>
+        <v-card-text v-if="selectedInstance">Selected Instance Id : {{selectedInstance.InstanceId}} and it is currently in <v-chip :color="getColor(selectedInstance.State.Name)"> {{selectedInstance.State.Name}} </v-chip> state</v-card-text>
+        <v-divider></v-divider>
+        <v-card-text >
+          <v-radio-group
+           mandatory
+           v-model="selectedInstance"
+           >
+            <v-radio
+              v-for="(i,n) in ec2servers"
+              :key="n"
+              :value="i.Instances[0]"
+            >
+            <template v-slot:label>
+             <strong class="mr-2"> Server Name: </strong> <div class="mr-2">{{i.serverName}}</div> <strong class="mr-2"> Tag : </strong> {{ i.customTag}}
+            </template>
+            </v-radio>
+          </v-radio-group>
+        </v-card-text>
+        <v-divider></v-divider>
+        <v-card-actions>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="dialog = false"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="mount(selected[0].FileSystemId, selectedInstance.InstanceId)"
+          >
+            Mount
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
         <v-btn :disabled='checkDel' class="mr-5" @click="Delete(selected[0].FileSystemId)">Delete</v-btn>
        <router-link tag='v-btn' to='/create'> <v-btn class="mr-5">Create</v-btn></router-link>
         <v-btn @click="list()"><v-icon>mdi-restore</v-icon></v-btn>
@@ -54,6 +109,7 @@
     </template>
     </v-data-table>
   </v-card>
+<!-- ------------------------ -->
   </v-container>
 </template>
 
@@ -63,7 +119,10 @@ export default {
   name: 'FileSystem',
   data () {
     return {
+      selectedInstance: '',
+      dialog: false,
       search: '',
+      ec2servers: [],
       FileSystem: [],
       selected: [],
       S3bucketBoolean: false,
@@ -105,47 +164,39 @@ export default {
   created () {
     this.loading = true
     this.list()
-    // routes.describeFileSystem().then(data => {
-    //   this.FileSystem = data.data.FileSystems
-    //   if (this.FileSystem.length === 0) {
-    //     console.log('zero')
-    //     this.loading = false
-    //   } else {
-    //     for (var i in this.FileSystem) {
-    //       this.FileSystem[i].DeploymentTypeCustom = this.FileSystem[i].LustreConfiguration.DeploymentType
-    //       if (Object.keys(this.FileSystem[i].LustreConfiguration).includes('DataRepositoryConfiguration')) {
-    //         var S3bucket = this.FileSystem[i].LustreConfiguration.DataRepositoryConfiguration.ImportPath
-    //         var arr = S3bucket.split('/')
-    //         this.FileSystem[i].S3bucket = arr[2]
-    //         this.FileSystem[i].S3bucketBoolean = true
-    //         this.loading = false
-    //       } else {
-    //         this.FileSystem[i].S3bucket = ''
-    //         this.FileSystem[i].S3bucketBoolean = false
-    //         this.loading = false
-    //       }
-    //       if (this.FileSystem[i].Tags.length === 0) {
-    //         console.log('No Tags')
-    //         this.loading = false
-    //       } else {
-    //         this.FileSystem[i].FileSystemName = this.FileSystem[i].Tags[0].Value
-    //         this.loading = false
-    //       }
-    //     }
-    //   }
-    // })
+    this.listec2()
   },
   methods: {
     getColor (data) {
       if (data === 'CREATING') {
         return 'orange'
       }
-      if (data === 'AVAILABLE') {
+      if (data === 'AVAILABLE' || data === 'running') {
         return 'green'
       }
-      if (data === 'DELETING') {
+      if (data === 'DELETING' || data === 'stopped') {
         return 'red'
       }
+    },
+    listec2 () {
+      routes.listec2().then(data => {
+        var EC2servers = data.data.Reservations
+        EC2servers.forEach(obj => {
+          // if (obj.Instances[0].State.Name === 'running') {
+          obj.Instances[0].Tags.forEach(tag => {
+            if (tag.Key === 'Name') {
+              obj.serverName = tag.Value
+            }
+            if (tag.Key === 'Application') {
+              if (tag.Value.startsWith('parallelcluster')) {
+                obj.customTag = tag.Value
+                this.ec2servers.push(obj)
+              }
+            }
+          })
+          // }
+        })
+      })
     },
     list () {
       this.loading = true
@@ -191,6 +242,30 @@ export default {
           this.list()
         })
       }
+    },
+    mount (FileSystemId, InstanceId) {
+      console.log(InstanceId)
+      var fsx = {
+        FileSystemIds: [FileSystemId]
+      }
+      routes.listFileSystemById(fsx).then(fsx => {
+        console.log(fsx.data.FileSystems[0].LustreConfiguration.MountName)
+        var MountName = fsx.data.FileSystems[0].LustreConfiguration.MountName
+        var params = {
+          DocumentName: 'AWS-RunShellScript',
+          DocumentVersion: '1',
+          InstanceIds: [
+            InstanceId
+          ],
+          Parameters: {
+            commands: ['sudo mkdir /krios_data', 'sudo mount -t lustre -o noatime,flock ' + FileSystemId + '.fsx.us-east-1.amazonaws.com@tcp:/' + MountName + ' /krios_data']
+          }
+        }
+        // console.log(params)
+        routes.mountFileSystem(params).then(data => {
+          console.log(data)
+        })
+      })
     }
   }
 }
