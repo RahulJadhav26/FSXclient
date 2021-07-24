@@ -1,9 +1,11 @@
 <template>
-  <v-container>
-    <!-- {{FileSystem}} -->
-    <!-- {{ec2servers}} -->
-    <!-- {{selected[0].FileSystemId}} -->
-    <v-card style="border-radius:1.7rem; border:2px solid grey" class="shadow-lg">
+<div>
+  <!-- {{ec2servers[0]}} -->
+  <!-- {{FileSystem}} -->
+  <!-- {{selected[0].FileSystemId}} -->
+  <!-- {{selected}} -->
+  <v-card style="box-shadow: none;" class="d-flex justify-center ">
+    <v-card style="width:95%; border-radius:1.7rem; border:2px solid grey" class="shadow-lg mt-2 justify-center">
       <h4 class="text-center pt-5 mt-5">Lustre File System List</h4>
     <v-card-title>
       <v-text-field
@@ -34,23 +36,33 @@
       </template>
       <v-card style="height:500px;">
         <v-card-title>Select EC2 Server</v-card-title>
-        <v-card-text v-if="selectedInstance">Selected Instance Id : {{selectedInstance.InstanceId}} and it is currently in <v-chip :color="getColor(selectedInstance.State.Name)"> {{selectedInstance.State.Name}} </v-chip> state</v-card-text>
+        <v-alert v-if='checkInstance' type="warning">Please select Instances in only "Running" State to mount the FSX File System</v-alert>
         <v-divider></v-divider>
         <v-card-text >
-          <v-radio-group
-           mandatory
-           v-model="selectedInstance"
-           >
-            <v-radio
-              v-for="(i,n) in ec2servers"
-              :key="n"
-              :value="i.Instances[0]"
+          <v-text-field
+              v-model="searchInstance"
+              append-icon="mdi-magnify"
+              label="Search"
+              single-line
+              hide-details
+            ></v-text-field>
+            <v-data-table
+              v-model="selectedInstance"
+              :headers="headersEC2"
+              :items="ec2servers"
+              item-key="customInstanceId"
+              show-select
+              :search="searchInstance"
+              class="elevation-1"
             >
-            <template v-slot:label>
-             <strong class="mr-2"> Server Name: </strong> <div class="mr-2">{{i.serverName}}</div> <strong class="mr-2"> Tag : </strong> {{ i.customTag}}
+            <template v-slot:item.state="{ item }">
+              <v-chip
+                :color="getColor(item.state)"
+              >
+                {{ item.state }}
+              </v-chip>
             </template>
-            </v-radio>
-          </v-radio-group>
+            </v-data-table>
         </v-card-text>
         <v-divider></v-divider>
         <v-card-actions>
@@ -64,7 +76,8 @@
           <v-btn
             color="blue darken-1"
             text
-            @click="mount(selected[0].FileSystemId, selectedInstance.InstanceId)"
+            :disabled ='checkInstance'
+            @click="mount(selected[0].FileSystemId, selectedInstance)"
           >
             Mount
           </v-btn>
@@ -109,8 +122,8 @@
     </template>
     </v-data-table>
   </v-card>
-<!-- ------------------------ -->
-  </v-container>
+  </v-card>
+  </div>
 </template>
 
 <script>
@@ -119,8 +132,10 @@ export default {
   name: 'FileSystem',
   data () {
     return {
-      selectedInstance: '',
+      selectedInstance: [],
+      searchInstance: '',
       dialog: false,
+      MountMessage: '',
       search: '',
       ec2servers: [],
       FileSystem: [],
@@ -148,17 +163,39 @@ export default {
         { text: 'Storage Capacity', value: 'StorageCapacity' },
         { text: 'Storage Type', value: 'StorageType' },
         { text: 'Key', value: 'Tags' },
-        { text: 'Creation Time', value: 'CreationTime' }
+        { text: 'Creation Time', value: 'CreationTime' },
+        { text: 'Mounted On', value: 'mount_InstanceIds' },
+        { text: 'Mount Path', value: 'mounted_path' },
+        { text: 'Mount Created Time', value: 'mount_created_on' }
+      ],
+      headersEC2: [
+        { text: 'Instance Id', value: 'customInstanceId' },
+        { text: 'Server Name ', value: 'serverName' },
+        { text: 'Application Tag', value: 'customTag' },
+        { text: 'Private IP', value: 'customPrivateIP' },
+        { text: 'Instance state', value: 'state' }
       ]
     }
   },
   computed: {
     checkDel () {
-      if (this.selected.length === 0) {
+      if (this.selected.length === 0 || this.selected[0].S3bucketBoolean === false) {
         return true
       } else {
         return false
       }
+    },
+    checkInstance () {
+      var status = true
+      for (var i in this.selectedInstance) {
+        if (this.selectedInstance[i].state === 'stopped') {
+          status = true
+          break
+        } else {
+          status = false
+        }
+      }
+      return status
     }
   },
   created () {
@@ -183,6 +220,9 @@ export default {
         var EC2servers = data.data.Reservations
         EC2servers.forEach(obj => {
           // if (obj.Instances[0].State.Name === 'running') {
+          obj.customPrivateIP = obj.Instances[0].PrivateIpAddress
+          obj.state = obj.Instances[0].State.Name
+          obj.customInstanceId = obj.Instances[0].InstanceId
           obj.Instances[0].Tags.forEach(tag => {
             if (tag.Key === 'Name') {
               obj.serverName = tag.Value
@@ -243,8 +283,13 @@ export default {
         })
       }
     },
-    mount (FileSystemId, InstanceId) {
-      console.log(InstanceId)
+    mount (FileSystemId, Instances) {
+      var InstanceIds = []
+      for (var i in Instances) {
+        InstanceIds.push(Instances[i].customInstanceId)
+      }
+      console.log(InstanceIds)
+      console.log(FileSystemId)
       var fsx = {
         FileSystemIds: [FileSystemId]
       }
@@ -254,15 +299,22 @@ export default {
         var params = {
           DocumentName: 'AWS-RunShellScript',
           DocumentVersion: '1',
-          InstanceIds: [
-            InstanceId
-          ],
+          InstanceIds: InstanceIds,
           Parameters: {
             commands: ['sudo mkdir /krios_data', 'sudo mount -t lustre -o noatime,flock ' + FileSystemId + '.fsx.us-east-1.amazonaws.com@tcp:/' + MountName + ' /krios_data']
           }
         }
-        // console.log(params)
-        routes.mountFileSystem(params).then(data => {
+        console.log(params)
+        // routes.mountFileSystem(params).then(data => {
+        //   console.log(data)
+        // }).then()
+        var item = {
+          fileSystemId: FileSystemId,
+          InstanceIds: InstanceIds,
+          mounted_path: fsx.data.FileSystems[0].LustreConfiguration.DataRepositoryConfiguration.ImportPath,
+          created_on: new Date().toString()
+        }
+        routes.createDynamoDb(item).then(data => {
           console.log(data)
         })
       })

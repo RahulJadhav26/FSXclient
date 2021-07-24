@@ -22,5 +22,11 @@ export default {
   },
   listFileSystemById (params) {
     return Api().post('/fsx/list', params)
+  },
+  createDynamoDb (params) {
+    return Api().post('/dynamodb/create', params)
+  },
+  listDynamoDb (params) {
+    return Api().post('/dynamodb/list', params)
   }
 }
