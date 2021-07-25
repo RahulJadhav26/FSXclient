@@ -1,10 +1,35 @@
 <template>
 <div>
   <!-- {{ec2servers[0]}} -->
-  <!-- {{FileSystem}} -->
   <!-- {{selected[0].FileSystemId}} -->
   <!-- {{selected}} -->
-  <v-card style="box-shadow: none;" class="d-flex justify-center ">
+  <!-- {{newFileSystem}} -->
+  <v-card v-if="mountedFSX" style="box-shadow: none;" class="d-flex justify-center ">
+  <v-card style="width:95%; border-radius:1.7rem; border:2px solid grey" class="shadow-lg mt-2 justify-center">
+    <h4 class="text-center pt-5 mt-5">Mounted Lustre File System List</h4>
+    <v-card-title>
+      <v-text-field
+        v-model="search"
+        append-icon="mdi-magnify"
+        label="Search"
+        single-line
+        hide-details
+      ></v-text-field>
+    </v-card-title>
+     <v-toolbar flat>
+    <v-switch
+      v-model="mountedFSX"
+      label="Mounted File System"
+    ></v-switch>
+     </v-toolbar>
+    <v-data-table
+      :headers="mountedHeaders"
+      :items="newFileSystem"
+      :search="mountedSearch"
+    ></v-data-table>
+  </v-card>
+  </v-card>
+  <v-card v-if="!mountedFSX" style="box-shadow: none;" class="d-flex justify-center ">
     <v-card style="width:95%; border-radius:1.7rem; border:2px solid grey" class="shadow-lg mt-2 justify-center">
       <h4 class="text-center pt-5 mt-5">Lustre File System List</h4>
     <v-card-title>
@@ -16,8 +41,11 @@
         hide-details
       ></v-text-field>
     </v-card-title>
-    <v-toolbar
-    flat>
+    <v-toolbar flat>
+    <v-switch
+      v-model="mountedFSX"
+      label="Mounted File System"
+    ></v-switch>
         <v-spacer></v-spacer>
          <v-dialog
       v-model="dialog"
@@ -29,7 +57,7 @@
           v-bind="attrs"
           v-on="on"
           class="mr-5"
-          :disabled='checkDel'
+          :disabled='checkMount'
         >
           Mount
         </v-btn>
@@ -86,7 +114,7 @@
     </v-dialog>
         <v-btn :disabled='checkDel' class="mr-5" @click="Delete(selected[0].FileSystemId)">Delete</v-btn>
        <router-link tag='v-btn' to='/create'> <v-btn class="mr-5">Create</v-btn></router-link>
-        <v-btn @click="list()"><v-icon>mdi-restore</v-icon></v-btn>
+        <v-btn @click="list();listMountInfo()"><v-icon>mdi-restore</v-icon></v-btn>
       </v-toolbar>
       <div class="text-center m-5">
           <v-progress-circular
@@ -132,13 +160,15 @@ export default {
   name: 'FileSystem',
   data () {
     return {
+      mountedFSX: false,
       selectedInstance: [],
       searchInstance: '',
+      mountedSearch: '',
       dialog: false,
-      MountMessage: '',
       search: '',
       ec2servers: [],
       FileSystem: [],
+      newFileSystem: [],
       selected: [],
       S3bucketBoolean: false,
       loading: false,
@@ -163,10 +193,7 @@ export default {
         { text: 'Storage Capacity', value: 'StorageCapacity' },
         { text: 'Storage Type', value: 'StorageType' },
         { text: 'Key', value: 'Tags' },
-        { text: 'Creation Time', value: 'CreationTime' },
-        { text: 'Mounted On', value: 'mount_InstanceIds' },
-        { text: 'Mount Path', value: 'mounted_path' },
-        { text: 'Mount Created Time', value: 'mount_created_on' }
+        { text: 'Creation Time', value: 'CreationTime' }
       ],
       headersEC2: [
         { text: 'Instance Id', value: 'customInstanceId' },
@@ -174,11 +201,25 @@ export default {
         { text: 'Application Tag', value: 'customTag' },
         { text: 'Private IP', value: 'customPrivateIP' },
         { text: 'Instance state', value: 'state' }
+      ],
+      mountedHeaders: [
+        { text: 'File System Name', value: 'fileSystemName' },
+        { text: 'File System Id', value: 'fileSystemId' },
+        { text: 'Mounted On', value: 'InstanceIds' },
+        { text: 'Mount Path', value: 'mounted_path' },
+        { text: 'Mount Created Time', value: 'created_on' }
       ]
     }
   },
   computed: {
     checkDel () {
+      if (this.selected.length === 0) {
+        return true
+      } else {
+        return false
+      }
+    },
+    checkMount () {
       if (this.selected.length === 0 || this.selected[0].S3bucketBoolean === false) {
         return true
       } else {
@@ -202,6 +243,7 @@ export default {
     this.loading = true
     this.list()
     this.listec2()
+    this.listMountInfo()
   },
   methods: {
     getColor (data) {
@@ -255,20 +297,34 @@ export default {
               var arr = S3bucket.split('/')
               this.FileSystem[i].S3bucket = arr[2]
               this.FileSystem[i].S3bucketBoolean = true
-              this.loading = false
             } else {
               console.log('bucket not found')
               this.FileSystem[i].S3bucket = ''
               this.FileSystem[i].S3bucketBoolean = false
-              this.loading = false
             }
             for (var j in this.FileSystem[i].Tags) {
               if (this.FileSystem[i].Tags[j].Key === 'Name') {
                 this.FileSystem[i].FileSystemName = this.FileSystem[i].Tags[j].Value
               }
             }
-            console.log(this.FileSystem)
           }
+          this.loading = false
+        }
+      })
+    },
+    listMountInfo () {
+      routes.describeFileSystem().then(data => {
+        var tempFileSystem = data.data.FileSystems
+        for (var i in tempFileSystem) {
+          var obj = {
+            fileSystemId: tempFileSystem[i].FileSystemId
+          }
+          routes.listDynamoDb(obj).then(data => {
+            if (data.data.status) {
+              console.log(data.data.data.Item)
+              this.newFileSystem.push(data.data.data.Item)
+            }
+          })
         }
       })
     },
@@ -279,6 +335,13 @@ export default {
       } else {
         routes.deleteFileSystem(id).then(data => {
           console.log(data)
+          var obj = {
+            fileSystemId: id
+          }
+          routes.deleteDynamoDb(obj).then(data => {
+            console.log(data)
+            this.listMountInfo()
+          })
           this.list()
         })
       }
@@ -305,19 +368,30 @@ export default {
           }
         }
         console.log(params)
-        // routes.mountFileSystem(params).then(data => {
-        //   console.log(data)
-        // }).then()
-        var item = {
-          fileSystemId: FileSystemId,
-          InstanceIds: InstanceIds,
-          mounted_path: fsx.data.FileSystems[0].LustreConfiguration.DataRepositoryConfiguration.ImportPath,
-          created_on: new Date().toString()
-        }
-        routes.createDynamoDb(item).then(data => {
+        routes.mountFileSystem(params).then(data => {
           console.log(data)
+          var fileSystemName = ''
+          for (var tag in fsx.data.FileSystems[0].Tags) {
+            if (fsx.data.FileSystems[0].Tags[tag].Key === 'Name') {
+              fileSystemName = fsx.data.FileSystems[0].Tags[tag].Value
+            }
+          }
+          console.log(fileSystemName)
+          var item = {
+            fileSystemId: FileSystemId,
+            InstanceIds: InstanceIds,
+            fileSystemName: fileSystemName,
+            mounted_path: fsx.data.FileSystems[0].LustreConfiguration.DataRepositoryConfiguration.ImportPath,
+            created_on: new Date().toString()
+          }
+          console.log(item)
+          routes.createDynamoDb(item).then(data => {
+            console.log(data)
+            this.listMountInfo()
+          })
         })
       })
+      this.dialog = false
     }
   }
 }

@@ -28,5 +28,8 @@ export default {
   },
   listDynamoDb (params) {
     return Api().post('/dynamodb/list', params)
+  },
+  deleteDynamoDb (params) {
+    return Api().post('dynamodb/delete', params)
   }
 }
