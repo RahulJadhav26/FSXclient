@@ -150,7 +150,7 @@ export default {
       // Rahul
       // subnetIds: ['subnet-c04a349f', 'subnet-21b7ca47', 'subnet-57d4ac76', 'subnet-dfcdc092', 'subnet-07dfe809'],
       // Sid
-      subnetIds: ['subnet-8a82bfc1', 'subnet-e691f9bb', 'subnet-5fd8f83b', 'subnet-37c3b718', 'subnet-15e21a1a'],
+      subnetIds: ['subnet-07795ee27423188c5', 'subnet-0a5a14746ae989877'],
       buckets: [''],
       count: 1,
       PerUnitStorageThroughput: 0,
